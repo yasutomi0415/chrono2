@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHRONO - ミニマルタイムライン</title>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --card-border: #2c2c2c;
+      --primary-color: #4a90e2;
+      --accent-urgent: #e74c3c;
+      --accent-warning: #f39c12;
+      --accent-safe: #2ecc71;
+      --text-main: #f0f0f0;
+      --text-sub: #a0a0a0;
+      --active-tab: #2a2a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding-bottom: 90px;
+    }
+
+    /* 上部ヘッダー */
+    .header-top {
+      background-color: #181818;
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-badge {
+      width: 28px;
+      height: 28px;
+      background-color: var(--text-main);
+      color: var(--bg-color);
+      font-weight: bold;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .brand-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .current-clock {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      font-variant-numeric: tabular-nums;
+      background: #222;
+      padding: 6px 12px;
+      border-radius: 16px;
+    }
+
+    /* ボトムナビゲーション */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #181818;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 0;
+      z-index: 1000;
+      box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .bottom-nav-item {
+      flex: 1;
+      text-align: center;
+      padding: 8px 4px;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .bottom-nav-item svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .bottom-nav-item:hover {
+      color: var(--text-main);
+    }
+
+    .bottom-nav-item.active {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 16px auto 0;
+      padding: 0 16px;
+    }
+
+    .tab-view {
+      display: none;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    /* 最優先予定エリア（固定表示） */
+    #urgent-container {
+      position: sticky;
+      top: 55px;
+      z-index: 150;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      background-color: rgba(18, 18, 18, 0.92);
+      backdrop-filter: blur(10px);
+      margin-bottom: 12px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-urgent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .urgent-card {
+      background: linear-gradient(135deg, rgba(42, 27, 27, 0.95) 0%, rgba(30, 30, 30, 0.95) 100%);
+      border: 1px solid #d9534f;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .badge-urgent {
+      background-color: var(--accent-urgent);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+    .urgent-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 8px 0 6px;
+      color: #fff;
+    }
+
+    .urgent-time {
+      font-size: 0.85rem;
+      color: #f1948a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .urgent-memo {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sort-control-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .sort-select {
+      background-color: #222;
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 22px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .form-control {
+      width: 100%;
+      background-color: #121212;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .datetime-select-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .datetime-select-group .form-control {
+      flex: 1;
+      min-width: 75px;
+      font-size: 1rem;
+      padding: 10px 8px;
+      background-color: #181818;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary { background-color: var(--primary-color); color: #fff; }
+    .btn-secondary { background-color: #333; color: var(--text-sub); }
+    .btn-danger { background-color: #341f22; color: #e74c3c; }
+
+    .timeline-list { list-style: none; }
+    .timeline-item {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: opacity 0.2s ease;
+    }
+    .timeline-item.completed { opacity: 0.55; background-color: #161616; }
+    .timeline-item.completed .item-title { text-decoration: line-through; color: var(--text-sub); }
+
+    .item-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .item-title { font-size: 1rem; font-weight: 600; }
+    .item-date { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px; }
+    .item-meta-info { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+    .meta-badge { font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+
+    .badge-prio-high { background-color: #8b0000; color: #ff9999; border: 1px solid #e74c3c; }
+    .badge-prio-mid { background-color: #6e5000; color: #ffeb99; border: 1px solid #f39c12; }
+    .badge-prio-low { background-color: #1c4d2e; color: #99ffe1; border: 1px solid #2ecc71; }
+    .badge-est-time { background-color: #2a2a3c; color: #aaaaff; border: 1px solid #5a5abb; }
+
+    .item-memo { font-size: 0.85rem; color: #888; margin-top: 6px; }
+
+    .time-limit-badge {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .limit-danger { background-color: rgba(231, 76, 60, 0.25); color: #ff6b6b; border: 1px solid #e74c3c; }
+    .limit-warning { background-color: rgba(243, 156, 18, 0.25); color: #f39c12; border: 1px solid #f39c12; }
+    .limit-safe { background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+    .limit-completed { background-color: rgba(255, 255, 255, 0.1); color: #888; }
+
+    .item-actions { display: flex; gap: 6px; }
+    .btn-sm { padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; }
+    .btn-complete { background-color: #1e4620; color: #72d572; }
+    .btn-undo { background-color: #333; color: #aaa; }
+    .btn-edit { background-color: #2c3e50; color: #aeb6bf; }
+    .btn-delete { background-color: #341f22; color: #e74c3c; }
+
+    /* 時間割テーブル */
+    .timetable-wrapper { overflow-x: auto; }
+    .timetable {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      margin-top: 10px;
+      min-width: 650px;
+    }
+    .timetable th, .timetable td {
+      border: 1px solid var(--card-border);
+      padding: 8px 3px;
+      text-align: center;
+      font-size: 0.8rem;
+      vertical-align: top;
+      word-wrap: break-word;
+      word-break: break-all;
+    }
+    .timetable th.day-col, .timetable td.day-cell { width: 14%; }
+    .timetable th.period-header, .timetable td.period-col { width: 16%; background-color: #181818; color: var(--text-sub); font-weight: bold; }
+    .timetable th { background-color: #161616; color: var(--text-sub); font-weight: 600; }
+
+    .class-cell {
+      background-color: #1a1a1a;
+      border-radius: 6px;
+      padding: 6px 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+      min-height: 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+    }
+    .class-cell:hover { background-color: #282828; }
+    .class-cell.has-class { background-color: #1b2838; border: 1px solid #2b4c7e; }
+
+    .class-name { font-weight: 600; color: #fff; font-size: 0.78rem; margin-bottom: 2px; line-height: 1.2; }
+    .class-room { font-size: 0.68rem; color: var(--primary-color); line-height: 1.2; }
+    .class-span { font-size: 0.62rem; color: var(--text-sub); margin-top: 2px; }
+
+    .empty-msg { text-align: center; color: var(--text-sub); padding: 30px; font-size: 0.9rem; }
+
+    /* 時限マスタ管理のリスト */
+    .period-master-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .period-master-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #151515;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+    }
+    .period-master-row input {
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 上部ヘッダー -->
+  <header class="header-top">
+    <div class="nav-brand">
+      <div class="logo-badge">C</div>
+      <span class="brand-title">CHRONO</span>
+    </div>
+    <div class="current-clock" id="current-clock">--:--:--</div>
+  </header>
+
+  <div class="container">
+
+    <!-- 画面1: ホーム -->
+    <div id="tab-timeline" class="tab-view active">
+      
+      <div id="urgent-container" style="display: none;">
+        <div class="section-header">
+          <span class="section-title">🔴 最優先の予定（NEXT UP）</span>
+        </div>
+        <div class="urgent-card">
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <span class="badge-urgent">直近の最優先</span>
+            <span id="urgent-prio-badge" class="meta-badge">--</span>
+            <span id="urgent-time-badge" class="meta-badge badge-est-time">--</span>
+          </div>
+          <div id="urgent-title" class="urgent-title">--</div>
+          <div class="urgent-time">
+            <span id="urgent-date">📅 --</span>
+            <span id="urgent-limit-badge" class="time-limit-badge">--</span>
+          </div>
+          <div id="urgent-memo" class="urgent-memo">--</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top: 12px;">
+        <span class="section-title" style="color: var(--text-sub);">予定タイムライン</span>
+        
+        <div class="sort-control-wrapper">
+          <label for="sort-select">並び順:</label>
+          <select id="sort-select" class="sort-select" onchange="changeSortMode(this.value)">
+            <option value="datetime">⏰ 締切が近い順</option>
+            <option value="priority">🔥 重さ・重要度順</option>
+            <option value="estTime">⏳ 所要時間が長い順</option>
+          </select>
+        </div>
+      </div>
+
+      <ul id="timeline-list" class="timeline-list"></ul>
+    </div>
+
+    <!-- 画面2: 予定の登録・変更 -->
+    <div id="tab-add" class="tab-view">
+      <div class="card">
+        <h2 id="form-header-title" style="font-size: 1.1rem; margin-bottom: 16px;">予定の新規登録</h2>
+        <form id="schedule-form">
+          <input type="hidden" id="edit-id" value="">
+          
+          <div class="form-group">
+            <label for="title">件名・講義課題名</label>
+            <input type="text" id="title" class="form-control" placeholder="例: 知能メディアプロジェクト2 レポート" required>
+          </div>
+
+          <div class="form-group">
+            <label>日時・締め切り設定</label>
+            <div class="datetime-select-group">
+              <select id="select-month" class="form-control" required>
+                <option value="">月</option>
+                <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+              </select>
+              <select id="select-day" class="form-control" required><option value="">日</option></select>
+              <select id="select-hour" class="form-control" required><option value="">時</option></select>
+              <select id="select-minute" class="form-control" required><option value="">分</option></select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="priority">課題の重さ・重要度</label>
+              <select id="priority" class="form-control">
+                <option value="high">🔴 高（重い課題・テスト）</option>
+                <option value="mid" selected>🟡 中（通常の課題・小テスト）</option>
+                <option value="low">🟢 低（軽めの作業・確認）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="est-time">推定所要時間</label>
+              <select id="est-time" class="form-control">
+                <option value="15">15分程度</option>
+                <option value="30" selected>30分程度</option>
+                <option value="60">1時間程度</option>
+                <option value="120">2時間程度</option>
+                <option value="180">3時間以上（重い課題）</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="memo">メモ（場所・提出先など）</label>
+            <input type="text" id="memo" class="form-control" placeholder="例: manaba / 講義室302">
+          </div>
+
+          <div style="margin-top: 24px;">
+            <button type="submit" id="btn-submit" class="btn btn-primary">登録する</button>
+            <button type="button" id="btn-cancel" class="btn btn-secondary" style="display:none;" onclick="cancelEdit()">キャンセル</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 画面3: 週間時間割・講義室 -->
+    <div id="tab-classes" class="tab-view">
+      
+      <!-- 時限カスタム定義エリア -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+          <div>
+            <h2 style="font-size: 1rem; color: var(--primary-color); margin-bottom: 4px;">⚙️ 大学の時限・時刻のカスタマイズ</h2>
+            <p style="font-size: 0.8rem; color: var(--text-sub);">
+              時間割のコマ名と開始・終了時刻を設定できます。
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="addPeriodMasterItem()">＋ 時限を追加</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="savePeriodMaster()">保存・反映</button>
+          </div>
+        </div>
+        <div id="period-master-list" class="period-master-list"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="font-size: 1.1rem; margin-bottom: 8px;">1週間の時間割・講義室管理（月〜土）</h2>
+        <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 16px;">
+          表内のセルをクリックするか、下のフォームから登録できます。
+        </p>
+
+        <div class="timetable-wrapper">
+          <table class="timetable">
+            <thead>
+              <tr>
+                <th class="period-header">時限</th>
+                <th class="day-col">月</th>
+                <th class="day-col">火</th>
+                <th class="day-col">水</th>
+                <th class="day-col">木</th>
+                <th class="day-col">金</th>
+                <th class="day-col" style="color: #6ba4ff;">土</th>
+              </tr>
+            </thead>
+            <tbody id="timetable-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 時間割登録フォーム -->
+      <div class="card">
+        <h3 id="class-form-title" style="font-size: 1rem; margin-bottom: 14px; color: var(--primary-color);">講義・教室情報の入力・編集</h3>
+        <form id="class-form">
+          <div class="form-group">
+            <label for="class-day">曜日</label>
+            <select id="class-day" class="form-control">
+              <option value="月">月曜日</option>
+              <option value="火">火曜日</option>
+              <option value="水">水曜日</option>
+              <option value="木">木曜日</option>
+              <option value="金">金曜日</option>
+              <option value="土">土曜日</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="class-start-period">開始時限</label>
+              <select id="class-start-period" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label for="class-end-period">終了時限</label>
+              <select id="class-end-period" class="form-control"></select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="class-name">講義名</label>
+            <input type="text" id="class-name" class="form-control" placeholder="例: 知能メディアプロジェクト2" required>
+          </div>
+
+          <div class="form-group">
+            <label for="class-room">教室の場所</label>
+            <input type="text" id="class-room" class="form-control" placeholder="例: 3号館 301教室">
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary">時間割を保存</button>
+            <button type="button" class="btn btn-danger" onclick="deleteClassSlot()">指定範囲のコマを削除</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ボトムナビゲーション -->
+  <nav class="bottom-nav">
+    <button class="bottom-nav-item active" onclick="switchTab('timeline', this)">
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      ホーム
+    </button>
+    <button class="bottom-nav-item" onclick="switchTab('add', this)">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      予定の登録
+    </button>
+    <button class="bottom-nav-item" onclick="switchTab('classes', this)">
+      <svg viewBox="0 0 24 24"><path d="M4 10h3v7H4zm6.5 0h3v7h-3zM2 19h20v3H2zm15-9h3v7h-3zm-5-9L2 6v2h20V6z"/></svg>
+      時間割・講義室
+    </button>
+  </nav>
+
+  <script>
+    let currentSortMode = 'datetime';
+
+    function initDateTimeSelectors() {
+      const daySelect = document.getElementById('select-day');
+      for (let i = 1; i <= 31; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${i}日`;
+        daySelect.appendChild(opt);
+      }
+
+      const hourSelect = document.getElementById('select-hour');
+      for (let i = 0; i <= 23; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i).padStart(2, '0');
+        opt.textContent = `${i}時`;
+        hourSelect.appendChild(opt);
+      }
+
+      const minuteSelect = document.getElementById('select-minute');
+      const minutes = [0, 15, 30, 45];
+      minutes.forEach(m => {
+        const opt = document.createElement('option');
+        const mStr = String(m).padStart(2, '0');
+        opt.value = mStr;
+        opt.textContent = `${mStr}分`;
+        minuteSelect.appendChild(opt);
+      });
+    }
+    initDateTimeSelectors();
+
+    // 実在する日付かどうか判定する関数
+    function isValidCalendarDate(year, month, day) {
+      const y = parseInt(year, 10);
+      const m = parseInt(month, 10) - 1;
+      const d = parseInt(day, 10);
+      const testDate = new Date(y, m, d);
+      return testDate.getFullYear() === y && testDate.getMonth() === m && testDate.getDate() === d;
+    }
+
+    function parseCustomDate(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.match(/\d+/g);
+      if (parts && parts.length >= 5) {
+        return new Date(
+          parseInt(parts[0], 10),
+          parseInt(parts[1], 10) - 1,
+          parseInt(parts[2], 10),
+          parseInt(parts[3], 10),
+          parseInt(parts[4], 10)
+        );
+      }
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function createInitialData() {
+      const now = new Date();
+      const d1 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const iso1 = `${d1.getFullYear()}-${String(d1.getMonth()+1).padStart(2,'0')}-${String(d1.getDate()).padStart(2,'0')}T23:59`;
+
+      const d2 = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000);
+      const iso2 = `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}T13:30`;
+
+      return [
+        { id: '1', title: 'Webツール(HTML+CSS+JS)課題の提出', datetime: iso1, memo: 'manabaからコードファイル提出', priority: 'high', estTime: '180', completed: false },
+        { id: '2', title: '知能メディアプロジェクト2 講義小テスト準備', datetime: iso2, memo: '3号館 301教室', priority: 'mid', estTime: '30', completed: false }
+      ];
+    }
+
+    const defaultTimetable = {
+      "月-2": { name: "知能メディアプロジェクト2", room: "3号館 301教室", startP: "2", endP: "2" },
+      "火-3": { name: "コンピュータサイエンス基礎", room: "2号館 204教室", startP: "3", endP: "3" },
+      "水-1": { name: "情報デザイン演習", room: "実習棟 Lab-B", startP: "1", endP: "2" },
+      "水-2": { name: "情報デザイン演習", room: "実習棟 Lab-B", startP: "1", endP: "2" },
+      "木-4": { name: "人工知能概論", room: "1号館 大講義室", startP: "4", endP: "4" }
+    };
+
+    const defaultPeriodMaster = [
+      { id: "1", label: "1限", start: "09:00", end: "10:30" },
+      { id: "2", label: "2限", start: "10:40", end: "12:10" },
+      { id: "3", label: "3限", start: "13:00", end: "14:30" },
+      { id: "4", label: "4限", start: "14:40", end: "16:10" },
+      { id: "5", label: "5限", start: "16:20", end: "17:50" },
+      { id: "6", label: "6限", start: "18:00", end: "19:30" }
+    ];
+
+    let schedules = JSON.parse(localStorage.getItem('chrono_schedules'));
+    if (!schedules || schedules.length === 0) schedules = createInitialData();
+
+    let timetableData = JSON.parse(localStorage.getItem('chrono_timetable')) || defaultTimetable;
+    let periodMaster = JSON.parse(localStorage.getItem('chrono_period_master')) || defaultPeriodMaster;
+
+    function renderPeriodMasterEditor() {
+      const container = document.getElementById('period-master-list');
+      container.innerHTML = '';
+      periodMaster.forEach((p, index) => {
+        const row = document.createElement('div');
+        row.className = 'period-master-row';
+        row.innerHTML = `
+          <input type="text" placeholder="コマ名 (例: 1限)" value="${p.label}" id="master-label-${index}" style="width: 100px;" required>
+          <span style="font-size:0.8rem; color:var(--text-sub);">開始:</span>
+          <input type="time" value="${p.start}" id="master-start-${index}" required>
+          <span style="font-size:0.8rem; color:var(--text-sub);">終了:</span>
+          <input type="time" value="${p.end}" id="master-end-${index}" required>
+          <button type="button" class="btn btn-sm btn-danger" onclick="removePeriodMasterItem(${index})">削除</button>
+        `;
+        container.appendChild(row);
+      });
+      updatePeriodSelectOptions();
+    }
+
+    window.addPeriodMasterItem = function() {
+      const newId = Date.now().toString();
+      periodMaster.push({ id: newId, label: `${periodMaster.length + 1}限`, start: "09:00", end: "10:30" });
+      renderPeriodMasterEditor();
+    };
+
+    window.removePeriodMasterItem = function(index) {
+      if (periodMaster.length <= 1) {
+        alert('最低1つの時限が必要です。');
+        return;
+      }
+      periodMaster.splice(index, 1);
+      renderPeriodMasterEditor();
+    };
+
+    window.savePeriodMaster = function() {
+      const updated = [];
+      for (let i = 0; i < periodMaster.length; i++) {
+        const label = document.getElementById(`master-label-${i}`).value.trim();
+        const start = document.getElementById(`master-start-${i}`).value;
+        const end = document.getElementById(`master-end-${i}`).value;
+        if (!label || !start || !end) {
+          alert('すべての項目を入力してください。');
+          return;
+        }
+        updated.push({ id: periodMaster[i].id || String(i+1), label, start, end });
+      }
+      periodMaster = updated;
+      localStorage.setItem('chrono_period_master', JSON.stringify(periodMaster));
+      renderPeriodMasterEditor();
+      renderTimetable();
+      alert('時限設定を保存し、時間割に反映しました。');
+    };
+
+    function updatePeriodSelectOptions() {
+      const startSelect = document.getElementById('class-start-period');
+      const endSelect = document.getElementById('class-end-period');
+      const currentStart = startSelect.value;
+      const currentEnd = endSelect.value;
+
+      startSelect.innerHTML = '';
+      endSelect.innerHTML = '';
+
+      periodMaster.forEach(p => {
+        const opt1 = document.createElement('option');
+        opt1.value = p.id;
+        opt1.textContent = `${p.label} (${p.start})`;
+        startSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = p.id;
+        opt2.textContent = `${p.label} (${p.start})`;
+        endSelect.appendChild(opt2);
+      });
+
+      if (currentStart) startSelect.value = currentStart;
+      if (currentEnd) endSelect.value = currentEnd;
+    }
+
+    function getTimeLimitInfo(targetDatetimeStr, completed) {
+      if (completed) return { text: '✓ 完了済み', class: 'limit-completed' };
+      const target = parseCustomDate(targetDatetimeStr);
+      if (!target) return null;
+
+      const now = new Date();
+      const diffMs = target.getTime() - now.getTime();
+      if (diffMs <= 0) return { text: '⚠️ 期限超過', class: 'limit-danger' };
+
+      const diffSec = Math.floor(diffMs / 1000);
+      const days = Math.floor(diffSec / (3600 * 24));
+      const hours = Math.floor((diffSec % (3600 * 24)) / 3600);
+      const mins = Math.floor((diffSec % 3600) / 60);
+
+      if (days > 0) {
+        return { text: `⏳ あと ${days}日 ${hours}時間`, class: days <= 1 ? 'limit-warning' : 'limit-safe' };
+      } else if (hours > 0) {
+        return { text: `🚨 あと ${hours}時間 ${mins}分`, class: 'limit-danger' };
+      } else {
+        return { text: `🚨 あと ${mins}分`, class: 'limit-danger' };
+      }
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      document.getElementById('current-clock').textContent = `${month}/${date} ${hours}:${minutes}:${seconds}`;
+      renderSchedules();
+    }
+    setInterval(updateClock, 1000);
+
+    function switchTab(tabName, element) {
+      document.querySelectorAll('.tab-view').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
+
+      document.getElementById(`tab-${tabName}`).classList.add('active');
+      if (element) element.classList.add('active');
+    }
+
+    function changeSortMode(mode) {
+      currentSortMode = mode;
+      renderSchedules();
+    }
+
+    function getPriorityBadge(prio) {
+      if (prio === 'high') return { text: '🔥 重さ: 高', class: 'badge-prio-high' };
+      if (prio === 'low') return { text: '🟢 重さ: 低', class: 'badge-prio-low' };
+      return { text: '🟡 重さ: 中', class: 'badge-prio-mid' };
+    }
+
+    function getEstTimeText(mins) {
+      const m = parseInt(mins || '30', 10);
+      if (m >= 60) {
+        const h = Math.floor(m / 60);
+        const rem = m % 60;
+        return `⏱ 約${h}時間${rem > 0 ? rem + '分' : ''}`;
+      }
+      return `⏱ 約${m}分`;
+    }
+
+    function renderSchedules() {
+      schedules.sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (currentSortMode === 'priority') {
+          const prioWeight = { high: 3, mid: 2, low: 1 };
+          const weightA = prioWeight[a.priority || 'mid'];
+          const weightB = prioWeight[b.priority || 'mid'];
+          if (weightA !== weightB) return weightB - weightA;
+        } else if (currentSortMode === 'estTime') {
+          const timeA = parseInt(a.estTime || '30', 10);
+          const timeB = parseInt(b.estTime || '30', 10);
+          if (timeA !== timeB) return timeB - timeA;
+        }
+        return (parseCustomDate(a.datetime) || new Date(0)) - (parseCustomDate(b.datetime) || new Date(0));
+      });
+
+      localStorage.setItem('chrono_schedules', JSON.stringify(schedules));
+
+      const listContainer = document.getElementById('timeline-list');
+      const urgentContainer = document.getElementById('urgent-container');
+      listContainer.innerHTML = '';
+
+      if (schedules.length === 0) {
+        urgentContainer.style.display = 'none';
+        listContainer.innerHTML = '<li class="empty-msg">登録されている予定はありません。</li>';
+        return;
+      }
+
+      const uncompletedSortedByTime = [...schedules]
+        .filter(s => !s.completed)
+        .sort((a, b) => (parseCustomDate(a.datetime) || 0) - (parseCustomDate(b.datetime) || 0));
+
+      if (uncompletedSortedByTime.length > 0) {
+        const urgent = uncompletedSortedByTime[0];
+        urgentContainer.style.display = 'block';
+        document.getElementById('urgent-title').textContent = urgent.title;
+        document.getElementById('urgent-date').textContent = `📅 ${formatDate(urgent.datetime)}`;
+        
+        const prioInfo = getPriorityBadge(urgent.priority);
+        const prioBadge = document.getElementById('urgent-prio-badge');
+        prioBadge.textContent = prioInfo.text;
+        prioBadge.className = `meta-badge ${prioInfo.class}`;
+        document.getElementById('urgent-time-badge').textContent = getEstTimeText(urgent.estTime);
+
+        const limitInfo = getTimeLimitInfo(urgent.datetime, urgent.completed);
+        const limitBadge = document.getElementById('urgent-limit-badge');
+        if (limitInfo) {
+          limitBadge.textContent = limitInfo.text;
+          limitBadge.className = `time-limit-badge ${limitInfo.class}`;
+          limitBadge.style.display = 'inline-flex';
+        } else {
+          limitBadge.style.display = 'none';
+        }
+        document.getElementById('urgent-memo').textContent = urgent.memo ? `📍 ${urgent.memo}` : '';
+      } else {
+        urgentContainer.style.display = 'none';
+      }
+
+      schedules.forEach(item => {
+        const li = document.createElement('li');
+        li.className = `timeline-item ${item.completed ? 'completed' : ''}`;
+        const limitInfo = getTimeLimitInfo(item.datetime, item.completed);
+        const badgeHtml = limitInfo ? `<span class="time-limit-badge ${limitInfo.class}">${limitInfo.text}</span>` : '';
+        const prioInfo = getPriorityBadge(item.priority);
+
+        li.innerHTML = `
+          <div>
+            <div class="item-header">
+              <span class="item-title">${escapeHtml(item.title)}</span>
+              ${badgeHtml}
+            </div>
+            <div class="item-date">📅 ${formatDate(item.datetime)}</div>
+            <div class="item-meta-info">
+              <span class="meta-badge ${prioInfo.class}">${prioInfo.text}</span>
+              <span class="meta-badge badge-est-time">${getEstTimeText(item.estTime)}</span>
+            </div>
+            ${item.memo ? `<div class="item-memo">📍 ${escapeHtml(item.memo)}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm ${item.completed ? 'btn-undo' : 'btn-complete'}" onclick="toggleComplete('${item.id}')">${item.completed ? '元に戻す' : '完了'}</button>
+            <button class="btn btn-sm btn-edit" onclick="startEdit('${item.id}')">編集</button>
+            <button class="btn btn-sm btn-delete" onclick="deleteItem('${item.id}')">削除</button>
+          </div>
+        `;
+        listContainer.appendChild(li);
+      });
+    }
+
+    function formatDate(str) {
+      const d = parseCustomDate(str);
+      if (!d) return str;
+      return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[match]);
+    }
+
+    window.toggleComplete = function(id) {
+      const index = schedules.findIndex(s => s.id === id);
+      if (index !== -1) {
+        schedules[index].completed = !schedules[index].completed;
+        renderSchedules();
+      }
+    };
+
+    document.getElementById('schedule-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-id').value;
+      const title = document.getElementById('title').value.trim();
+      const memo = document.getElementById('memo').value.trim();
+      const priority = document.getElementById('priority').value;
+      const estTime = document.getElementById('est-time').value;
+      const m = document.getElementById('select-month').value;
+      const d = document.getElementById('select-day').value;
+      const h = document.getElementById('select-hour').value;
+      const min = document.getElementById('select-minute').value;
+
+      if (!title || !m || !d || !h || !min) {
+        alert('日時をすべて選択してください。');
+        return;
+      }
+
+      // 存在しない日付の検証（例: 2月31日など）
+      const currentYear = new Date().getFullYear();
+      if (!isValidCalendarDate(currentYear, m, d)) {
+        alert('存在しない日付です。正しい日付を選択してください。');
+        return;
+      }
+
+      const datetime = `${currentYear}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${h}:${min}`;
+
+      if (editId) {
+        const index = schedules.findIndex(s => s.id === editId);
+        if (index !== -1) schedules[index] = { ...schedules[index], title, datetime, memo, priority, estTime };
+      } else {
+        schedules.push({ id: Date.now().toString(), title, datetime, memo, priority, estTime, completed: false });
+      }
+
+      resetForm();
+      renderSchedules();
+      switchTab('timeline', document.querySelectorAll('.bottom-nav-item')[0]);
+    });
+
+    window.startEdit = function(id) {
+      const item = schedules.find(s => s.id === id);
+      if (!item) return;
+
+      document.getElementById('edit-id').value = item.id;
+      document.getElementById('title').value = item.title;
+      document.getElementById('memo').value = item.memo || '';
+      document.getElementById('priority').value = item.priority || 'mid';
+      document.getElementById('est-time').value = item.estTime || '30';
+
+      const parsed = parseCustomDate(item.datetime);
+      if (parsed) {
+        document.getElementById('select-month').value = parsed.getMonth() + 1;
+        document.getElementById('select-day').value = parsed.getDate();
+        document.getElementById('select-hour').value = String(parsed.getHours()).padStart(2, '0');
+        const mins = parsed.getMinutes();
+        const nearestMin = [0, 15, 30, 45].reduce((prev, curr) => Math.abs(curr - mins) < Math.abs(prev - mins) ? curr : prev);
+        document.getElementById('select-minute').value = String(nearestMin).padStart(2, '0');
+      }
+
+      document.getElementById('form-header-title').textContent = '予定の変更・編集';
+      document.getElementById('btn-submit').textContent = '変更を保存';
+      document.getElementById('btn-cancel').style.display = 'inline-block';
+      switchTab('add', document.querySelectorAll('.bottom-nav-item')[1]);
+    };
+
+    function cancelEdit() {
+      resetForm();
+      switchTab('timeline', document.querySelectorAll('.bottom-nav-item')[0]);
+    }
+
+    function resetForm() {
+      document.getElementById('edit-id').value = '';
+      document.getElementById('title').value = '';
+      document.getElementById('memo').value = '';
+      document.getElementById('priority').value = 'mid';
+      document.getElementById('est-time').value = '30';
+      document.getElementById('select-month').value = '';
+      document.getElementById('select-day').value = '';
+      document.getElementById('select-hour').value = '';
+      document.getElementById('select-minute').value = '';
+      document.getElementById('form-header-title').textContent = '予定の新規登録';
+      document.getElementById('btn-submit').textContent = '登録する';
+      document.getElementById('btn-cancel').style.display = 'none';
+    }
+
+    window.deleteItem = function(id) {
+      if (confirm('この予定を削除しますか？')) {
+        schedules = schedules.filter(s => s.id !== id);
+        renderSchedules();
+      }
+    };
+
+    const days = ["月", "火", "水", "木", "金", "土"];
+
+    function renderTimetable() {
+      localStorage.setItem('chrono_timetable', JSON.stringify(timetableData));
+      const tbody = document.getElementById('timetable-body');
+      tbody.innerHTML = '';
+
+      periodMaster.forEach(p => {
+        const tr = document.createElement('tr');
+        
+        const tdPeriod = document.createElement('td');
+        tdPeriod.className = 'period-col';
+        tdPeriod.innerHTML = `${escapeHtml(p.label)}<br><span style="font-size:0.62rem;font-weight:normal;color:#777;">${p.start}〜${p.end}</span>`;
+        tr.appendChild(tdPeriod);
+
+        days.forEach(d => {
+          const td = document.createElement('td');
+          td.className = 'day-cell';
+          const key = `${d}-${p.id}`;
+          const info = timetableData[key];
+
+          if (info && info.name) {
+            td.innerHTML = `
+              <div class="class-cell has-class" onclick="selectClassSlot('${d}', '${p.id}')">
+                <div class="class-name">${escapeHtml(info.name)}</div>
+                <div class="class-room">📍 ${escapeHtml(info.room || '未設定')}</div>
+              </div>
+            `;
+          } else {
+            td.innerHTML = `
+              <div class="class-cell" onclick="selectClassSlot('${d}', '${p.id}')">
+                <span style="color:#555; font-size:0.75rem;">+ 登録</span>
+              </div>
+            `;
+          }
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.selectClassSlot = function(day, periodId) {
+      document.getElementById('class-day').value = day;
+      const key = `${day}-${periodId}`;
+      const info = timetableData[key];
+
+      if (info) {
+        document.getElementById('class-start-period').value = String(info.startP || periodId);
+        document.getElementById('class-end-period').value = String(info.endP || periodId);
+        document.getElementById('class-name').value = info.name || '';
+        document.getElementById('class-room').value = info.room || '';
+      } else {
+        document.getElementById('class-start-period').value = String(periodId);
+        document.getElementById('class-end-period').value = String(periodId);
+        document.getElementById('class-name').value = '';
+        document.getElementById('class-room').value = '';
+      }
+      document.getElementById('class-form').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    document.getElementById('class-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const day = document.getElementById('class-day').value;
+      const startP = document.getElementById('class-start-period').value;
+      const endP = document.getElementById('class-end-period').value;
+      const name = document.getElementById('class-name').value.trim();
+      const room = document.getElementById('class-room').value.trim();
+
+      const startIndex = periodMaster.findIndex(p => p.id === startP);
+      const endIndex = periodMaster.findIndex(p => p.id === endP);
+
+      if (startIndex === -1 || endIndex === -1 || startIndex > endIndex) {
+        alert('正しい開始時限と終了時限を選択してください。');
+        return;
+      }
+
+      for (let i = startIndex; i <= endIndex; i++) {
+        const pId = periodMaster[i].id;
+        timetableData[`${day}-${pId}`] = { name, room, startP, endP };
+      }
+
+      renderTimetable();
+      alert(`${day}曜のコマに「${name}」を保存しました。`);
+    });
+
+    window.deleteClassSlot = function() {
+      const day = document.getElementById('class-day').value;
+      const startP = document.getElementById('class-start-period').value;
+      const endP = document.getElementById('class-end-period').value;
+
+      const startIndex = periodMaster.findIndex(p => p.id === startP);
+      const endIndex = periodMaster.findIndex(p => p.id === endP);
+
+      if (confirm(`${day}曜の指定範囲のコマを削除しますか？`)) {
+        for (let i = startIndex; i <= endIndex; i++) {
+          delete timetableData[`${day}-${periodMaster[i].id}`];
+        }
+        document.getElementById('class-name').value = '';
+        document.getElementById('class-room').value = '';
+        renderTimetable();
+      }
+    };
+
+    // 初期化
+    renderPeriodMasterEditor();
+    renderSchedules();
+    renderTimetable();
+    updateClock();
+  </script>
+</body>
+</html>
